@@ -65,3 +65,100 @@ class Pipe:
         self.x -= 3
         self.top_rect.x = self.x
         self.bottom_rect.x = self.x
+
+    def draw(self, surface):
+        surface.blit(pipe_image, (self.x, self.top_rect.y), self.top_rect)
+        surface.blit(pipe_image, (self.x, self.bottom_rect.y), self.bottom_rect)
+
+    def collide(self, bird):
+        return self.top_rect.colliderect(bird.rect) or self.bottom_rect.colliderect(
+            bird.rect
+        )
+
+
+def draw_text(surface, text, size, x, y, color=WHITE):
+    font = pygame.font.SysFont(None, size)
+    text_surface = font.render(text, True, color)
+    text_rect = text_surface.get_rect(center=(x, y))
+    surface.blit(text_surface, text_rect)
+
+
+def main():
+    clock = pygame.time.Clock()
+    bird = Bird()
+    pipes = []
+    score = 0
+    running = True
+    last_pipe = pygame.time.get_ticks()
+    game_over = False
+
+    while running:
+        clock.tick(FPS)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE and not game_over:
+                    bird.jump()
+                if event.key == pygame.K_r and game_over:
+                    main()  # Restart game
+
+        if not game_over:
+            bird.update()
+            # Add new pipes
+            now = pygame.time.get_ticks()
+            if now - last_pipe > PIPE_FREQUENCY:
+                pipes.append(Pipe(SCREEN_WIDTH))
+                last_pipe = now
+
+            # Update pipes
+            for pipe in pipes:
+                pipe.update()
+
+            # Remove off-screen pipes
+            pipes = [pipe for pipe in pipes if pipe.x + pipe_image.get_width() > 0]
+
+            # Collision detection
+            for pipe in pipes:
+                if pipe.collide(bird):
+                    game_over = True
+
+            # Check if bird hits ground or goes above screen
+            if bird.y > SCREEN_HEIGHT or bird.y < 0:
+                game_over = True
+
+            # Scoring
+            for pipe in pipes:
+                if (
+                    not hasattr(pipe, "scored")
+                    and pipe.x + pipe_image.get_width() < bird.x
+                ):
+                    score += 1
+                    pipe.scored = True
+
+        # Draw everything
+        screen.blit(background_image, (0, 0))
+        for pipe in pipes:
+            pipe.draw(screen)
+        bird.draw(screen)
+        draw_text(screen, f"Score: {score}", 36, SCREEN_WIDTH // 2, 50)
+
+        if game_over:
+            draw_text(
+                screen, "GAME OVER", 64, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, RED
+            )
+            draw_text(
+                screen,
+                "Press R to Restart",
+                32,
+                SCREEN_WIDTH // 2,
+                SCREEN_HEIGHT // 2 + 60,
+                WHITE,
+            )
+
+        pygame.display.flip()
+
+
+if __name__ == "__main__":
+    main()
